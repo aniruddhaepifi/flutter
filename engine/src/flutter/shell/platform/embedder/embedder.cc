@@ -964,7 +964,7 @@ static sk_sp<SkSurface> MakeSkSurfaceFromBackingStore(
 
   auto sk_surface = SkSurfaces::WrapBackendRenderTarget(
       context,                      //  context
-      backend_render_target,        // backend render target
+      backend_render_target,        //backend render target
       kBottomLeft_GrSurfaceOrigin,  // surface origin
       color_type.value(),           // color type
       SkColorSpace::MakeSRGB(),     // color space
@@ -2050,6 +2050,11 @@ FlutterEngineResult FlutterEngineInitialize(size_t version,
   }
 
   flutter::Settings settings = flutter::SettingsFromCommandLine(command_line);
+
+  // [CUSTOM PATCH] If a custom AOT library path is provided, use it as the highest-priority application_library_path.
+  if (SAFE_ACCESS(args, custom_aot_library_path, nullptr) != nullptr && strlen(args->custom_aot_library_path) > 0) {
+    settings.application_library_path.insert(settings.application_library_path.begin(), std::string(args->custom_aot_library_path));
+  }
 
   if (SAFE_ACCESS(args, aot_data, nullptr)) {
     if (SAFE_ACCESS(args, vm_snapshot_data, nullptr) ||

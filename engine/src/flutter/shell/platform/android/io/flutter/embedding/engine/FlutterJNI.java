@@ -177,7 +177,8 @@ public class FlutterJNI {
       @Nullable String bundlePath,
       @NonNull String appStoragePath,
       @NonNull String engineCachesPath,
-      long initTimeMillis);
+      long initTimeMillis,
+      @Nullable String customAotLibraryPath);
 
   /**
    * Perform one time initialization of the Dart VM and Flutter engine.
@@ -190,6 +191,7 @@ public class FlutterJNI {
    * @param appStoragePath The path to the application data directory.
    * @param engineCachesPath The path to the application cache directory.
    * @param initTimeMillis The time, in milliseconds, taken for initialization.
+   * @param customAotLibraryPath (Optional) Path to a custom AOT .so file to load for this engine instance.
    */
   public void init(
       @NonNull Context context,
@@ -197,13 +199,14 @@ public class FlutterJNI {
       @Nullable String bundlePath,
       @NonNull String appStoragePath,
       @NonNull String engineCachesPath,
-      long initTimeMillis) {
+      long initTimeMillis,
+      @Nullable String customAotLibraryPath) {
     if (FlutterJNI.initCalled) {
       Log.w(TAG, "FlutterJNI.init called more than once");
     }
 
     FlutterJNI.nativeInit(
-        context, args, bundlePath, appStoragePath, engineCachesPath, initTimeMillis);
+        context, args, bundlePath, appStoragePath, engineCachesPath, initTimeMillis, customAotLibraryPath);
     FlutterJNI.initCalled = true;
   }
 

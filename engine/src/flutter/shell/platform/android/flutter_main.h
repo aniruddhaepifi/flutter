@@ -43,7 +43,8 @@ class FlutterMain {
                    jstring kernelPath,
                    jstring appStoragePath,
                    jstring engineCachesPath,
-                   jlong initTimeMillis);
+                   jlong initTimeMillis,
+                   jstring customAotLibraryPath);
 
   void SetupDartVMServiceUriCallback(JNIEnv* env);
 

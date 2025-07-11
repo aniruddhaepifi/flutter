@@ -2549,6 +2549,11 @@ typedef struct {
   /// being registered on the framework side. The callback is invoked from
   /// a task posted to the platform thread.
   FlutterChannelUpdateCallback channel_update_callback;
+
+  /// [CUSTOM PATCH] Path to a custom AOT shared library (.so) to load for this engine instance.
+  /// If null, the default behavior is used (first found in application_library_path).
+  /// This enables running multiple Flutter modules with different Dart code in the same process.
+  const char* custom_aot_library_path;
 } FlutterProjectArgs;
 
 #ifndef FLUTTER_ENGINE_NO_PROTOTYPES

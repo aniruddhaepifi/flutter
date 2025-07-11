@@ -113,6 +113,9 @@ public class FlutterEngine implements ViewUtils.DisplayUpdater {
   // Engine Lifecycle.
   @NonNull private final Set<EngineLifecycleListener> engineLifecycleListeners = new HashSet<>();
 
+  @Nullable
+  private final String customAotLibraryPath;
+
   @NonNull
   private final EngineLifecycleListener engineLifecycleListener =
       new EngineLifecycleListener() {
@@ -137,30 +140,29 @@ public class FlutterEngine implements ViewUtils.DisplayUpdater {
   /**
    * Constructs a new {@code FlutterEngine}.
    *
-   * <p>A new {@code FlutterEngine} does not execute any Dart code automatically. See {@link
-   * #getDartExecutor()} and {@link DartExecutor#executeDartEntrypoint(DartExecutor.DartEntrypoint)}
-   * to begin executing Dart code within this {@code FlutterEngine}.
-   *
-   * <p>A new {@code FlutterEngine} will not display any UI until a {@link RenderSurface} is
-   * registered. See {@link #getRenderer()} and {@link
-   * FlutterRenderer#startRenderingToSurface(Surface, boolean)}.
-   *
-   * <p>A new {@code FlutterEngine} automatically attaches all plugins. See {@link #getPlugins()}.
-   *
-   * <p>A new {@code FlutterEngine} does come with all default system channels attached.
-   *
-   * <p>The first {@code FlutterEngine} instance constructed per process will also load the Flutter
-   * native library and start a Dart VM.
-   *
-   * <p>In order to pass Dart VM initialization arguments (see {@link
-   * io.flutter.embedding.engine.FlutterShellArgs}) when creating the VM, manually set the
-   * initialization arguments by calling {@link
-   * io.flutter.embedding.engine.loader.FlutterLoader#startInitialization(Context)} and {@link
-   * io.flutter.embedding.engine.loader.FlutterLoader#ensureInitializationComplete(Context,
-   * String[])} before constructing the engine.
+   * @param context The Android context.
+   * @param customAotLibraryPath (Optional) Path to a custom AOT .so file to load for this engine instance.
    */
-  public FlutterEngine(@NonNull Context context) {
-    this(context, null);
+  public FlutterEngine(@NonNull Context context, @Nullable String customAotLibraryPath) {
+    this(context, customAotLibraryPath, null);
+  }
+
+  public FlutterEngine(@NonNull Context context, @Nullable String customAotLibraryPath, @Nullable String[] dartVmArgs) {
+    this(context, customAotLibraryPath, /* flutterLoader */ null, /* flutterJNI */ null, dartVmArgs, true);
+  }
+
+  public FlutterEngine(
+      @NonNull Context context,
+      @Nullable String customAotLibraryPath,
+      @Nullable String[] dartVmArgs,
+      boolean automaticallyRegisterPlugins) {
+    this(
+        context,
+        customAotLibraryPath,
+        /* flutterLoader */ null,
+        /* flutterJNI */ null,
+        dartVmArgs,
+        automaticallyRegisterPlugins);
   }
 
   /**
@@ -169,7 +171,7 @@ public class FlutterEngine implements ViewUtils.DisplayUpdater {
    * <p>If the Dart VM has already started, the given arguments will have no effect.
    */
   public FlutterEngine(@NonNull Context context, @Nullable String[] dartVmArgs) {
-    this(context, /* flutterLoader */ null, /* flutterJNI */ null, dartVmArgs, true);
+    this(context, null, null, dartVmArgs, true);
   }
 
   /**
@@ -182,12 +184,7 @@ public class FlutterEngine implements ViewUtils.DisplayUpdater {
       @NonNull Context context,
       @Nullable String[] dartVmArgs,
       boolean automaticallyRegisterPlugins) {
-    this(
-        context,
-        /* flutterLoader */ null,
-        /* flutterJNI */ null,
-        dartVmArgs,
-        automaticallyRegisterPlugins);
+    this(context, null, null, dartVmArgs, automaticallyRegisterPlugins);
   }
 
   /**
@@ -215,8 +212,8 @@ public class FlutterEngine implements ViewUtils.DisplayUpdater {
       boolean waitForRestorationData) {
     this(
         context,
-        /* flutterLoader */ null,
-        /* flutterJNI */ null,
+        null,
+        null,
         new PlatformViewsController(),
         dartVmArgs,
         automaticallyRegisterPlugins,
@@ -234,7 +231,7 @@ public class FlutterEngine implements ViewUtils.DisplayUpdater {
       @NonNull Context context,
       @Nullable FlutterLoader flutterLoader,
       @NonNull FlutterJNI flutterJNI) {
-    this(context, flutterLoader, flutterJNI, null, true);
+    this(context, null, flutterLoader, flutterJNI, null, true);
   }
 
   /**
@@ -251,6 +248,7 @@ public class FlutterEngine implements ViewUtils.DisplayUpdater {
       boolean automaticallyRegisterPlugins) {
     this(
         context,
+        null,
         flutterLoader,
         flutterJNI,
         new PlatformViewsController(),
@@ -271,6 +269,7 @@ public class FlutterEngine implements ViewUtils.DisplayUpdater {
       boolean automaticallyRegisterPlugins) {
     this(
         context,
+        null,
         flutterLoader,
         flutterJNI,
         platformViewsController,
@@ -290,6 +289,7 @@ public class FlutterEngine implements ViewUtils.DisplayUpdater {
       boolean waitForRestorationData) {
     this(
         context,
+        null,
         flutterLoader,
         flutterJNI,
         platformViewsController,

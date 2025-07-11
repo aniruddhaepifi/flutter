@@ -92,7 +92,8 @@ void FlutterMain::Init(JNIEnv* env,
                        jstring kernelPath,
                        jstring appStoragePath,
                        jstring engineCachesPath,
-                       jlong initTimeMillis) {
+                       jlong initTimeMillis,
+                       jstring customAotLibraryPath) {
   std::vector<std::string> args;
   args.push_back("flutter");
   for (auto& arg : fml::jni::StringArrayToVector(env, jargs)) {
@@ -101,6 +102,14 @@ void FlutterMain::Init(JNIEnv* env,
   auto command_line = fml::CommandLineFromIterators(args.begin(), args.end());
 
   auto settings = SettingsFromCommandLine(command_line);
+
+  // [CUSTOM PATCH] If a custom AOT library path is provided, use it as the highest-priority application_library_path.
+  if (customAotLibraryPath != nullptr) {
+    std::string custom_path = fml::jni::JavaStringToString(env, customAotLibraryPath);
+    if (!custom_path.empty()) {
+      settings.application_library_path.insert(settings.application_library_path.begin(), custom_path);
+    }
+  }
 
   // Turn systracing on if ATrace_isEnabled is true and the user did not already
   // request systracing
