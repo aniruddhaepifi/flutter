@@ -246,8 +246,8 @@ public class FlutterJNI {
   /**
    * VM Service URI for the VM instance.
    *
-   * <p>Its value is set by the native engine once {@link #init(Context, String[], String, String,
-   * String, long)} is run.
+   * <p>Its value is set by the native engine once init(Context, String[], String, String,
+   * String, long) is run.
    */
   @Nullable
   public static String getVMServiceUri() {
@@ -257,8 +257,8 @@ public class FlutterJNI {
   /**
    * VM Service URI for the VM instance.
    *
-   * <p>Its value is set by the native engine once {@link #init(Context, String[], String, String,
-   * String, long)} is run.
+   * <p>Its value is set by the native engine once init(Context, String[], String, String,
+   * String, long) is run.
    *
    * @deprecated replaced by {@link #getVMServiceUri()}.
    */
@@ -447,8 +447,8 @@ public class FlutterJNI {
    * <p>This can only be called once the current FlutterJNI instance is attached by calling {@link
    * #attachToNative()}.
    *
-   * <p>Static methods that should be only called once such as {@link #init(Context, String[],
-   * String, String, String, long)} shouldn't be called again on the spawned FlutterJNI instance.
+   * <p>Static methods that should be only called once such as init(Context, String[],
+   * String, String, String, long) shouldn't be called again on the spawned FlutterJNI instance.
    */
   @UiThread
   @NonNull
@@ -456,7 +456,8 @@ public class FlutterJNI {
       @Nullable String entrypointFunctionName,
       @Nullable String pathToEntrypointFunction,
       @Nullable String initialRoute,
-      @Nullable List<String> entrypointArgs) {
+      @Nullable List<String> entrypointArgs,
+      @Nullable String customAotLibraryPath) {
     ensureRunningOnMainThread();
     ensureAttachedToNative();
     FlutterJNI spawnedJNI =
@@ -465,7 +466,8 @@ public class FlutterJNI {
             entrypointFunctionName,
             pathToEntrypointFunction,
             initialRoute,
-            entrypointArgs);
+            entrypointArgs,
+            customAotLibraryPath);
     Preconditions.checkState(
         spawnedJNI.nativeShellHolderId != null && spawnedJNI.nativeShellHolderId != 0,
         "Failed to spawn new JNI connected shell from existing shell.");
@@ -478,7 +480,8 @@ public class FlutterJNI {
       @Nullable String entrypointFunctionName,
       @Nullable String pathToEntrypointFunction,
       @Nullable String initialRoute,
-      @Nullable List<String> entrypointArgs);
+      @Nullable List<String> entrypointArgs,
+      @Nullable String customAotLibraryPath);
 
   /**
    * Detaches this {@code FlutterJNI} instance from Flutter's native engine, which precludes any
@@ -487,7 +490,7 @@ public class FlutterJNI {
    * <p>This method must not be invoked if {@code FlutterJNI} is not already attached to native.
    *
    * <p>Invoking this method will result in the release of all native-side resources that were set
-   * up during {@link #attachToNative()} or {@link #spawn(String, String, String, List)}, or
+   * up during attachToNative() or spawn(String, String, String, List)}, or
    * accumulated thereafter.
    *
    * <p>It is permissible to re-attach this instance to native after detaching it from native.
@@ -998,7 +1001,8 @@ public class FlutterJNI {
       @Nullable String entrypointFunctionName,
       @Nullable String pathToEntrypointFunction,
       @NonNull AssetManager assetManager,
-      @Nullable List<String> entrypointArgs) {
+      @Nullable List<String> entrypointArgs,
+      @Nullable String customAotLibraryPath) {
     ensureRunningOnMainThread();
     ensureAttachedToNative();
     nativeRunBundleAndSnapshotFromLibrary(
@@ -1007,7 +1011,8 @@ public class FlutterJNI {
         entrypointFunctionName,
         pathToEntrypointFunction,
         assetManager,
-        entrypointArgs);
+        entrypointArgs,
+        customAotLibraryPath);
   }
 
   private native void nativeRunBundleAndSnapshotFromLibrary(
@@ -1016,7 +1021,8 @@ public class FlutterJNI {
       @Nullable String entrypointFunctionName,
       @Nullable String pathToEntrypointFunction,
       @NonNull AssetManager manager,
-      @Nullable List<String> entrypointArgs);
+      @Nullable List<String> entrypointArgs,
+      @Nullable String customAotLibraryPath);
   // ------ End Dart Execution Support -------
 
   // --------- Start Platform Message Support ------

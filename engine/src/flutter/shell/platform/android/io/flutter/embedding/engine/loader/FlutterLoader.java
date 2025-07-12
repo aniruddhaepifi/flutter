@@ -31,36 +31,37 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
-/** Finds Flutter resources in an application APK and also loads Flutter's native library. */
+/**
+ * Finds Flutter resources in an application APK and also loads Flutter's native
+ * library.
+ */
 public class FlutterLoader {
   private static final String TAG = "FlutterLoader";
 
-  private static final String OLD_GEN_HEAP_SIZE_META_DATA_KEY =
-      "io.flutter.embedding.android.OldGenHeapSize";
-  private static final String ENABLE_IMPELLER_META_DATA_KEY =
-      "io.flutter.embedding.android.EnableImpeller";
-  private static final String ENABLE_VULKAN_VALIDATION_META_DATA_KEY =
-      "io.flutter.embedding.android.EnableVulkanValidation";
-  private static final String IMPELLER_BACKEND_META_DATA_KEY =
-      "io.flutter.embedding.android.ImpellerBackend";
-  private static final String IMPELLER_OPENGL_GPU_TRACING_DATA_KEY =
-      "io.flutter.embedding.android.EnableOpenGLGPUTracing";
-  private static final String IMPELLER_VULKAN_GPU_TRACING_DATA_KEY =
-      "io.flutter.embedding.android.EnableVulkanGPUTracing";
-  private static final String DISABLE_MERGED_PLATFORM_UI_THREAD_KEY =
-      "io.flutter.embedding.android.DisableMergedPlatformUIThread";
-  private static final String ENABLE_SURFACE_CONTROL =
-      "io.flutter.embedding.android.EnableSurfaceControl";
+  private static final String OLD_GEN_HEAP_SIZE_META_DATA_KEY = "io.flutter.embedding.android.OldGenHeapSize";
+  private static final String ENABLE_IMPELLER_META_DATA_KEY = "io.flutter.embedding.android.EnableImpeller";
+  private static final String ENABLE_VULKAN_VALIDATION_META_DATA_KEY = "io.flutter.embedding.android.EnableVulkanValidation";
+  private static final String IMPELLER_BACKEND_META_DATA_KEY = "io.flutter.embedding.android.ImpellerBackend";
+  private static final String IMPELLER_OPENGL_GPU_TRACING_DATA_KEY = "io.flutter.embedding.android.EnableOpenGLGPUTracing";
+  private static final String IMPELLER_VULKAN_GPU_TRACING_DATA_KEY = "io.flutter.embedding.android.EnableVulkanGPUTracing";
+  private static final String DISABLE_MERGED_PLATFORM_UI_THREAD_KEY = "io.flutter.embedding.android.DisableMergedPlatformUIThread";
+  private static final String ENABLE_SURFACE_CONTROL = "io.flutter.embedding.android.EnableSurfaceControl";
 
   /**
-   * Set whether leave or clean up the VM after the last shell shuts down. It can be set from app's
-   * meta-data in <application /> in AndroidManifest.xml. Set it to true in to leave the Dart VM,
+   * Set whether leave or clean up the VM after the last shell shuts down. It can
+   * be set from app's
+   * meta-data in <application /> in AndroidManifest.xml. Set it to true in to
+   * leave the Dart VM,
    * set it to false to destroy VM.
    *
-   * <p>If your want to let your app destroy the last shell and re-create shells more quickly, set
-   * it to true, otherwise if you want to clean up the memory of the leak VM, set it to false.
+   * <p>
+   * If your want to let your app destroy the last shell and re-create shells more
+   * quickly, set
+   * it to true, otherwise if you want to clean up the memory of the leak VM, set
+   * it to false.
    *
-   * <p>TODO(eggfly): Should it be set to false by default?
+   * <p>
+   * TODO(eggfly): Should it be set to false by default?
    * https://github.com/flutter/flutter/issues/96843
    */
   private static final String LEAK_VM_META_DATA_KEY = "io.flutter.embedding.android.LeakVM";
@@ -81,38 +82,68 @@ public class FlutterLoader {
 
   private static FlutterLoader instance;
 
+  @Nullable
+  private final String customAotLibraryPath;
+
   /**
-   * Creates a {@code FlutterLoader} that uses a default constructed {@link FlutterJNI} and {@link
+   * Creates a {@code FlutterLoader} that uses a default constructed
+   * {@link FlutterJNI} and {@link
    * ExecutorService}.
    */
   public FlutterLoader() {
-    this(FlutterInjector.instance().getFlutterJNIFactory().provideFlutterJNI());
+    this(FlutterInjector.instance().getFlutterJNIFactory().provideFlutterJNI(), null);
   }
 
   /**
-   * Creates a {@code FlutterLoader} that uses a default constructed {@link ExecutorService}.
+   * Creates a {@code FlutterLoader} that uses a default constructed
+   * {@link ExecutorService}.
    *
-   * @param flutterJNI The {@link FlutterJNI} instance to use for loading the libflutter.so C++
-   *     library, setting up the font manager, and calling into C++ initialization.
+   * @param flutterJNI The {@link FlutterJNI} instance to use for loading the
+   *                   libflutter.so C++
+   *                   library, setting up the font manager, and calling into C++
+   *                   initialization.
    */
   public FlutterLoader(@NonNull FlutterJNI flutterJNI) {
-    this(flutterJNI, FlutterInjector.instance().executorService());
+    this(flutterJNI, FlutterInjector.instance().executorService(), null);
   }
 
   /**
    * Creates a {@code FlutterLoader} with the specified {@link FlutterJNI}.
    *
-   * @param flutterJNI The {@link FlutterJNI} instance to use for loading the libflutter.so C++
-   *     library, setting up the font manager, and calling into C++ initialization.
-   * @param executorService The {@link ExecutorService} to use when creating new threads.
+   * @param flutterJNI      The {@link FlutterJNI} instance to use for loading the
+   *                        libflutter.so C++
+   *                        library, setting up the font manager, and calling into
+   *                        C++ initialization.
+   * @param executorService The {@link ExecutorService} to use when creating new
+   *                        threads.
    */
   public FlutterLoader(@NonNull FlutterJNI flutterJNI, @NonNull ExecutorService executorService) {
+    this(flutterJNI, executorService, null);
+  }
+
+  /**
+   * Creates a {@code FlutterLoader} with the specified {@link FlutterJNI} and
+   * customAotLibraryPath.
+   *
+   * @param flutterJNI           The {@link FlutterJNI} instance to use for
+   *                             loading the libflutter.so C++
+   *                             library, setting up the font manager, and calling
+   *                             into C++ initialization.
+   * @param executorService      The {@link ExecutorService} to use when creating
+   *                             new threads.
+   * @param customAotLibraryPath (Optional) Path to a custom AOT .so file to load
+   *                             for this engine instance.
+   */
+  public FlutterLoader(@NonNull FlutterJNI flutterJNI, @NonNull ExecutorService executorService,
+      @Nullable String customAotLibraryPath) {
     this.flutterJNI = flutterJNI;
     this.executorService = executorService;
+    this.customAotLibraryPath = customAotLibraryPath;
   }
 
   private boolean initialized = false;
-  @Nullable private Settings settings;
+  @Nullable
+  private Settings settings;
   private long initStartTimestampMillis;
   private FlutterApplicationInfo flutterApplicationInfo;
   private FlutterJNI flutterJNI;
@@ -130,7 +161,8 @@ public class FlutterLoader {
     }
   }
 
-  @Nullable Future<InitResult> initResultFuture;
+  @Nullable
+  Future<InitResult> initResultFuture;
 
   /**
    * Starts initialization of the native system.
@@ -144,13 +176,16 @@ public class FlutterLoader {
   /**
    * Starts initialization of the native system.
    *
-   * <p>This loads the Flutter engine's native library to enable subsequent JNI calls. This also
+   * <p>
+   * This loads the Flutter engine's native library to enable subsequent JNI
+   * calls. This also
    * starts locating and unpacking Dart resources packaged in the app's APK.
    *
-   * <p>Calling this method multiple times has no effect.
+   * <p>
+   * Calling this method multiple times has no effect.
    *
    * @param applicationContext The Android application context.
-   * @param settings Configuration settings.
+   * @param settings           Configuration settings.
    */
   public void startInitialization(@NonNull Context applicationContext, @NonNull Settings settings) {
     // Do not run startInitialization more than once.
@@ -170,73 +205,71 @@ public class FlutterLoader {
       initStartTimestampMillis = SystemClock.uptimeMillis();
       flutterApplicationInfo = ApplicationInfoLoader.load(appContext);
 
-      final DisplayManager dm =
-          (DisplayManager) appContext.getSystemService(Context.DISPLAY_SERVICE);
+      final DisplayManager dm = (DisplayManager) appContext.getSystemService(Context.DISPLAY_SERVICE);
       VsyncWaiter waiter = VsyncWaiter.getInstance(dm, flutterJNI);
       waiter.init();
 
       // Use a background thread for initialization tasks that require disk access.
-      Callable<InitResult> initTask =
-          new Callable<InitResult>() {
-            @Override
-            public InitResult call() {
-              try (TraceSection e = TraceSection.scoped("FlutterLoader initTask")) {
-                ResourceExtractor resourceExtractor = initResources(appContext);
+      Callable<InitResult> initTask = new Callable<InitResult>() {
+        @Override
+        public InitResult call() {
+          try (TraceSection e = TraceSection.scoped("FlutterLoader initTask")) {
+            ResourceExtractor resourceExtractor = initResources(appContext);
 
-                try {
-                  flutterJNI.loadLibrary(appContext);
-                } catch (UnsatisfiedLinkError unsatisfiedLinkError) {
-                  String couldntFindVersion = "couldn't find \"libflutter.so\"";
-                  String notFoundVersion = "dlopen failed: library \"libflutter.so\" not found";
+            try {
+              flutterJNI.loadLibrary(appContext);
+            } catch (UnsatisfiedLinkError unsatisfiedLinkError) {
+              String couldntFindVersion = "couldn't find \"libflutter.so\"";
+              String notFoundVersion = "dlopen failed: library \"libflutter.so\" not found";
 
-                  if (unsatisfiedLinkError.toString().contains(couldntFindVersion)
-                      || unsatisfiedLinkError.toString().contains(notFoundVersion)) {
-                    // To gather more information for
-                    // https://github.com/flutter/flutter/issues/144291,
-                    // log the contents of the native libraries directory as well as the
-                    // cpu architecture.
+              if (unsatisfiedLinkError.toString().contains(couldntFindVersion)
+                  || unsatisfiedLinkError.toString().contains(notFoundVersion)) {
+                // To gather more information for
+                // https://github.com/flutter/flutter/issues/144291,
+                // log the contents of the native libraries directory as well as the
+                // cpu architecture.
 
-                    String cpuArch = System.getProperty("os.arch");
-                    File nativeLibsDir = new File(flutterApplicationInfo.nativeLibraryDir);
-                    String[] nativeLibsContents = nativeLibsDir.list();
+                String cpuArch = System.getProperty("os.arch");
+                File nativeLibsDir = new File(flutterApplicationInfo.nativeLibraryDir);
+                String[] nativeLibsContents = nativeLibsDir.list();
 
-                    throw new UnsupportedOperationException(
-                        "Could not load libflutter.so this is possibly because the application"
-                            + " is running on an architecture that Flutter Android does not support (e.g. x86)"
-                            + " see https://docs.flutter.dev/deployment/android#what-are-the-supported-target-architectures"
-                            + " for more detail.\n"
-                            + "App is using cpu architecture: "
-                            + cpuArch
-                            + ", and the native libraries directory (with path "
-                            + nativeLibsDir.getAbsolutePath()
-                            + ") "
-                            + (nativeLibsDir.exists()
-                                ? "contains the following files: "
-                                    + Arrays.toString(nativeLibsContents)
-                                : "does not exist."),
-                        unsatisfiedLinkError);
-                  }
-
-                  throw unsatisfiedLinkError;
-                }
-
-                flutterJNI.updateRefreshRate();
-
-                // Prefetch the default font manager as soon as possible on a background thread.
-                // It helps to reduce time cost of engine setup that blocks the platform thread.
-                executorService.execute(() -> flutterJNI.prefetchDefaultFontManager());
-
-                if (resourceExtractor != null) {
-                  resourceExtractor.waitForCompletion();
-                }
-
-                return new InitResult(
-                    PathUtils.getFilesDir(appContext),
-                    PathUtils.getCacheDirectory(appContext),
-                    PathUtils.getDataDirectory(appContext));
+                throw new UnsupportedOperationException(
+                    "Could not load libflutter.so this is possibly because the application"
+                        + " is running on an architecture that Flutter Android does not support (e.g. x86)"
+                        + " see https://docs.flutter.dev/deployment/android#what-are-the-supported-target-architectures"
+                        + " for more detail.\n"
+                        + "App is using cpu architecture: "
+                        + cpuArch
+                        + ", and the native libraries directory (with path "
+                        + nativeLibsDir.getAbsolutePath()
+                        + ") "
+                        + (nativeLibsDir.exists()
+                            ? "contains the following files: "
+                                + Arrays.toString(nativeLibsContents)
+                            : "does not exist."),
+                    unsatisfiedLinkError);
               }
+
+              throw unsatisfiedLinkError;
             }
-          };
+
+            flutterJNI.updateRefreshRate();
+
+            // Prefetch the default font manager as soon as possible on a background thread.
+            // It helps to reduce time cost of engine setup that blocks the platform thread.
+            executorService.execute(() -> flutterJNI.prefetchDefaultFontManager());
+
+            if (resourceExtractor != null) {
+              resourceExtractor.waitForCompletion();
+            }
+
+            return new InitResult(
+                PathUtils.getFilesDir(appContext),
+                PathUtils.getCacheDirectory(appContext),
+                PathUtils.getDataDirectory(appContext));
+          }
+        }
+      };
       initResultFuture = executorService.submit(initTask);
     }
   }
@@ -244,10 +277,11 @@ public class FlutterLoader {
   /**
    * Blocks until initialization of the native system has completed.
    *
-   * <p>Calling this method multiple times has no effect.
+   * <p>
+   * Calling this method multiple times has no effect.
    *
    * @param applicationContext The Android application context.
-   * @param args Flags sent to the Flutter runtime.
+   * @param args               Flags sent to the Flutter runtime.
    */
   public void ensureInitializationComplete(
       @NonNull Context applicationContext, @Nullable String[] args) {
@@ -280,27 +314,28 @@ public class FlutterLoader {
 
       String kernelPath = null;
       if (BuildConfig.DEBUG || BuildConfig.JIT_RELEASE) {
-        String snapshotAssetPath =
-            result.dataDirPath + File.separator + flutterApplicationInfo.flutterAssetsDir;
+        String snapshotAssetPath = result.dataDirPath + File.separator + flutterApplicationInfo.flutterAssetsDir;
         kernelPath = snapshotAssetPath + File.separator + DEFAULT_KERNEL_BLOB;
         shellArgs.add("--" + SNAPSHOT_ASSET_PATH_KEY + "=" + snapshotAssetPath);
         shellArgs.add("--" + VM_SNAPSHOT_DATA_KEY + "=" + flutterApplicationInfo.vmSnapshotData);
         shellArgs.add(
             "--" + ISOLATE_SNAPSHOT_DATA_KEY + "=" + flutterApplicationInfo.isolateSnapshotData);
       } else {
+        String aotLibArg = customAotLibraryPath != null ? customAotLibraryPath
+            : flutterApplicationInfo.aotSharedLibraryName;
         shellArgs.add(
-            "--" + AOT_SHARED_LIBRARY_NAME + "=" + flutterApplicationInfo.aotSharedLibraryName);
+            "--" + AOT_SHARED_LIBRARY_NAME + "=" + aotLibArg);
 
         // Most devices can load the AOT shared library based on the library name
-        // with no directory path.  Provide a fully qualified path to the library
+        // with no directory path. Provide a fully qualified path to the library
         // as a workaround for devices where that fails.
+        String aotLibFullPath = customAotLibraryPath != null ? customAotLibraryPath
+            : (flutterApplicationInfo.nativeLibraryDir + File.separator + flutterApplicationInfo.aotSharedLibraryName);
         shellArgs.add(
             "--"
                 + AOT_SHARED_LIBRARY_NAME
                 + "="
-                + flutterApplicationInfo.nativeLibraryDir
-                + File.separator
-                + flutterApplicationInfo.aotSharedLibraryName);
+                + aotLibFullPath);
 
         // In profile mode, provide a separate library containing a snapshot for
         // launching the Dart VM service isolate.
@@ -318,18 +353,16 @@ public class FlutterLoader {
         shellArgs.add("--log-tag=" + settings.getLogTag());
       }
 
-      ApplicationInfo applicationInfo =
-          applicationContext
-              .getPackageManager()
-              .getApplicationInfo(
-                  applicationContext.getPackageName(), PackageManager.GET_META_DATA);
+      ApplicationInfo applicationInfo = applicationContext
+          .getPackageManager()
+          .getApplicationInfo(
+              applicationContext.getPackageName(), PackageManager.GET_META_DATA);
       Bundle metaData = applicationInfo.metaData;
-      int oldGenHeapSizeMegaBytes =
-          metaData != null ? metaData.getInt(OLD_GEN_HEAP_SIZE_META_DATA_KEY) : 0;
+      int oldGenHeapSizeMegaBytes = metaData != null ? metaData.getInt(OLD_GEN_HEAP_SIZE_META_DATA_KEY) : 0;
       if (oldGenHeapSizeMegaBytes == 0) {
         // default to half of total memory.
-        ActivityManager activityManager =
-            (ActivityManager) applicationContext.getSystemService(Context.ACTIVITY_SERVICE);
+        ActivityManager activityManager = (ActivityManager) applicationContext
+            .getSystemService(Context.ACTIVITY_SERVICE);
         ActivityManager.MemoryInfo memInfo = new ActivityManager.MemoryInfo();
         activityManager.getMemoryInfo(memInfo);
         oldGenHeapSizeMegaBytes = (int) (memInfo.totalMem / 1e6 / 2);
@@ -390,7 +423,8 @@ public class FlutterLoader {
           kernelPath,
           result.appStoragePath,
           result.engineCachesPath,
-          initTimeMillis);
+          initTimeMillis,
+          customAotLibraryPath);
 
       initialized = true;
     } catch (Exception e) {
@@ -408,7 +442,8 @@ public class FlutterLoader {
   }
 
   /**
-   * Same as {@link #ensureInitializationComplete(Context, String[])} but waiting on a background
+   * Same as {@link #ensureInitializationComplete(Context, String[])} but waiting
+   * on a background
    * thread, then invoking {@code callback} on the {@code callbackHandler}.
    */
   public void ensureInitializationCompleteAsync(
@@ -446,12 +481,17 @@ public class FlutterLoader {
         });
   }
 
-  /** Returns whether the FlutterLoader has finished loading the native library. */
+  /**
+   * Returns whether the FlutterLoader has finished loading the native library.
+   */
   public boolean initialized() {
     return initialized;
   }
 
-  /** Extract assets out of the APK that need to be cached as uncompressed files on disk. */
+  /**
+   * Extract assets out of the APK that need to be cached as uncompressed files on
+   * disk.
+   */
   private ResourceExtractor initResources(@NonNull Context applicationContext) {
     ResourceExtractor resourceExtractor = null;
     if (BuildConfig.DEBUG || BuildConfig.JIT_RELEASE) {
@@ -459,8 +499,7 @@ public class FlutterLoader {
       final String packageName = applicationContext.getPackageName();
       final PackageManager packageManager = applicationContext.getPackageManager();
       final AssetManager assetManager = applicationContext.getResources().getAssets();
-      resourceExtractor =
-          new ResourceExtractor(dataDirPath, packageName, packageManager, assetManager);
+      resourceExtractor = new ResourceExtractor(dataDirPath, packageName, packageManager, assetManager);
 
       // In debug/JIT mode these assets will be written to disk and then
       // mapped into memory so they can be provided to the Dart VM.
@@ -480,7 +519,8 @@ public class FlutterLoader {
   }
 
   /**
-   * Returns the file name for the given asset. The returned file name can be used to access the
+   * Returns the file name for the given asset. The returned file name can be used
+   * to access the
    * asset in the APK through the {@link android.content.res.AssetManager} API.
    *
    * @param asset the name of the asset. The name can be hierarchical
@@ -492,20 +532,26 @@ public class FlutterLoader {
   }
 
   /**
-   * Returns the file name for the given asset which originates from the specified packageName. The
-   * returned file name can be used to access the asset in the APK through the {@link
+   * Returns the file name for the given asset which originates from the specified
+   * packageName. The
+   * returned file name can be used to access the asset in the APK through the
+   * {@link
    * android.content.res.AssetManager} API.
    *
-   * @param asset the name of the asset. The name can be hierarchical
+   * @param asset       the name of the asset. The name can be hierarchical
    * @param packageName the name of the package from which the asset originates
-   * @return the file name to be used with {@link android.content.res.AssetManager}
+   * @return the file name to be used with
+   *         {@link android.content.res.AssetManager}
    */
   @NonNull
   public String getLookupKeyForAsset(@NonNull String asset, @NonNull String packageName) {
     return getLookupKeyForAsset("packages" + File.separator + packageName + File.separator + asset);
   }
 
-  /** Returns the configuration on whether flutter engine should automatically register plugins. */
+  /**
+   * Returns the configuration on whether flutter engine should automatically
+   * register plugins.
+   */
   @NonNull
   public boolean automaticallyRegisterPlugins() {
     return flutterApplicationInfo.automaticallyRegisterPlugins;
