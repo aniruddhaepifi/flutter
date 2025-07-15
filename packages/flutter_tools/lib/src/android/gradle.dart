@@ -185,6 +185,7 @@ class AndroidGradleBuilder implements AndroidBuilder {
     required String target,
     String? outputDirectoryPath,
     required String buildNumber,
+    String? soName,
   }) async {
     Directory outputDirectory = _fileSystem.directory(
       outputDirectoryPath ?? project.android.buildDirectory,
@@ -206,6 +207,7 @@ class AndroidGradleBuilder implements AndroidBuilder {
         target: target,
         outputDirectory: outputDirectory,
         buildNumber: buildNumber,
+        soName: soName,
       );
     }
     printHowToConsumeAar(
@@ -684,6 +686,7 @@ class AndroidGradleBuilder implements AndroidBuilder {
     required String target,
     required Directory outputDirectory,
     required String buildNumber,
+    String? soName,
   }) async {
     final FlutterManifest manifest = project.manifest;
     if (!manifest.isModule) {
@@ -709,6 +712,7 @@ class AndroidGradleBuilder implements AndroidBuilder {
       '-Poutput-dir=${outputDirectory.path}',
       '-Pis-plugin=${manifest.isPlugin}',
       '-PbuildNumber=$buildNumber',
+      if (soName != null && soName.isNotEmpty) '-PsoName=$soName',
     ];
     if (_logger.isVerbose) {
       command.add('--full-stacktrace');

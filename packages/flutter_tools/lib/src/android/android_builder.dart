@@ -21,6 +21,7 @@ abstract class AndroidBuilder {
     required String target,
     String? outputDirectoryPath,
     required String buildNumber,
+    String? soName, // Custom .so name
   });
 
   /// Builds an APK artifact.

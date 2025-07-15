@@ -1316,7 +1316,8 @@ class FlutterPlugin implements Plugin<Project> {
                         include "*.so"
                         // Move `app.so` to `lib/<abi>/libapp.so`
                         rename { String filename ->
-                            return "lib/${abi}/lib${filename}"
+                            String customSoName = project.hasProperty('soName') && project.soName ? project.soName : filename
+                            return "lib/${abi}/lib${customSoName}"
                         }
                     }
                     // Copy the native assets created by build.dart and placed in build/native_assets by flutter assemble.

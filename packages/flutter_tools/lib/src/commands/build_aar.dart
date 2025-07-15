@@ -58,6 +58,10 @@ class BuildAarCommand extends BuildSubCommand {
       allowed: <String>['android-arm', 'android-arm64', 'android-x86', 'android-x64'],
       help: 'The target platform for which the project is compiled.',
     );
+    argParser.addOption(
+      'so-name',
+      help: 'Custom name for the generated .so library (e.g., mylib.so).',
+    );
   }
   final AndroidSdk? _androidSdk;
   final FileSystem _fileSystem;
@@ -173,6 +177,7 @@ class BuildAarCommand extends BuildSubCommand {
       androidBuildInfo: androidBuildInfo,
       outputDirectoryPath: stringArg('output'),
       buildNumber: buildNumber,
+      soName: stringArg('so-name'), // Pass the custom so name
     );
 
     // When an aar is successfully built, record to analytics whether Impeller
