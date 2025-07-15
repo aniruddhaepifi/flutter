@@ -178,9 +178,18 @@ projectsEvaluated {
         moduleProject.android.libraryVariants.all { variant ->
             // Configure the `assembleAar<variantName>` task for each plugin's projects and make
             // the module's equivalent task depend on the plugin's task.
+            // String variantName = variant.name.capitalize()
+            // println "variantName: $variantName"
+            // moduleProject.tasks.findByPath("assembleAar$variantName")
+            //     .dependsOn(pluginProject.tasks.findByPath("assembleAar$variantName"))
+
             String variantName = variant.name.capitalize()
-            moduleProject.tasks.findByPath("assembleAar$variantName")
-                .dependsOn(pluginProject.tasks.findByPath("assembleAar$variantName"))
+            println "variantName: $variantName"
+            def moduleTask = moduleProject.tasks.findByPath("assembleAar$variantName")
+            def pluginTask = pluginProject.tasks.findByPath("assembleAar$variantName")
+            if (moduleTask != null && pluginTask != null) {
+                moduleTask.dependsOn(pluginTask)
+            }
         }
     }
 }
